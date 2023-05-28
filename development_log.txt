@@ -34,3 +34,5 @@
       Something I need to note: 
             1. When reading from unmapped memory, the real hardware would return
                the last byte that was read.
+            2. SP starts off 0. After reset, which decrements SP 3 times, it would be
+               0xfd.
