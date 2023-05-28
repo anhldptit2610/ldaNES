@@ -1,0 +1,10 @@
+{
+	"files.associations": {
+		"stdio.h": "c",
+		"ldanes_6502.h": "c",
+		"bus.h": "c",
+		"cartridge.h": "c",
+		"stdint.h": "c"
+	},
+	"cmake.sourceDirectory": "/home/lda/Learning/ldaNES/src"
+}

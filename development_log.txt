@@ -1,0 +1,36 @@
+16/5: done implementing 6502 cpu and tested all the instructions.
+      Time to re-learn SDL2 again. Now I don't think I know much 
+      about SDL.
+
+28/5: There are so many things I want to write here. The klaus2m5
+      test made me so hard to figure out what went wrong in my code.
+      Why? Because we need to run the test, find out which address 
+      the PC stuck at, then look at the .lst file to find out what when
+      wrong. But what went wrong? The test doesn't give me much about that,
+      so I gave up klaus2m5. Next test I tried is nestest. An incredible 
+      test! The life saver here is the nestest.log file. It gives you the 
+      result you need to archive when running the test. I finished fixing
+      code bugs in 2 days, which is quite fast I think. Now all the legal
+      and some illegal opcodes have been tested and work well, I will move 
+      to PPU part next week. Good things will come if you try hard!
+
+      Ah, one thing about the documentation. I think the CPU doesn't have an 
+      official documentation, which is quite bad because there are so many 
+      websites about 6502, but they don't say same thing. Something will be 
+      missed out, so you need to find as much information as possible, check out
+      what is right or wrong based on your test(mine is nestest), and fix the code.
+      Here is the list of documentations I used for implementing 6502 CPU:
+            
+            1. https://www.nesdev.org/wiki/Nesdev_Wiki - of course. You can find anything
+               about 6502 here.
+            2. https://www.masswerk.at/6502/6502_instruction_set.html - contains all the 
+               legal and illegal instructions. I think this website is the most accurate one,
+               although it still has some wrong information.
+            3. https://www.nesdev.org/obelisk-6502-guide/index.html - a general and quick guide,
+               not quite specified.
+      
+      I also use other websites, but those 3 are the best source in my opinion.
+
+      Something I need to note: 
+            1. When reading from unmapped memory, the real hardware would return
+               the last byte that was read.
