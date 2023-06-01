@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
-#include "../inc/ldaNES_6502.h"
+#include "../inc/common.h"
+#include "../inc/cpu.h"
+#include "../inc/bus.h"
 #include <setjmp.h>
 #include <unity/unity.h>
 #include <unity/unity_internals.h>
@@ -21,11 +23,15 @@ void tearDown(void)
 
 void testInstruction(struct cpu *cpu, struct asmInstruction cmd)
 {
+	struct bus bus;
+
+	bus.cpu = cpu;
+
 	cpu->mem[cpu->reg.pc] = cmd.opcode;
 	cpu->mem[cpu->reg.pc + 1] = cmd.operand1;
 	cpu->mem[cpu->reg.pc + 2] = cmd.operand2;
-	uint8_t cycles = 0;
-	fetchAndExecuteInstruction(cpu, &cycles);
+	int cycles = 0;
+	fetchAndExecuteInstruction(&bus, &cycles);
 }
 
 /* Note. I use testLDA to test all the addressing modes 
@@ -201,9 +207,10 @@ void testLDY(void)
 {
 	struct asmInstruction LDY;
 	struct cpu cpu;
-	uint8_t cycles; 
+	int cycles; 
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 
 	/* test immediate */
 	LDY.opcode = 0xA0;
@@ -394,9 +401,10 @@ void testTAX(void)
 {
 	struct cpu cpu;
 	struct asmInstruction TAX;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	TAX.opcode = 0xAA;
 	cpu.reg.a = 0x80;
 	testInstruction(&cpu, TAX);
@@ -414,9 +422,10 @@ void testTAY(void)
 {
 	struct cpu cpu;
 	struct asmInstruction TAY;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	TAY.opcode = 0xA8;
 	cpu.reg.a = 0x80;
 	testInstruction(&cpu, TAY);
@@ -502,9 +511,10 @@ void testPHA(void)
 {
 	struct cpu cpu;
 	struct asmInstruction PHA;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	PHA.opcode = 0x48;
 	cpu.reg.a = 0x30;
 	testInstruction(&cpu, PHA);
@@ -515,9 +525,10 @@ void testPHP(void)
 {
 	struct cpu cpu;
 	struct asmInstruction PHP;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	PHP.opcode = 0x08;
 	cpu.reg.p = 0x30;
 	testInstruction(&cpu, PHP);
@@ -528,9 +539,10 @@ void testPLA(void)
 {
 	struct cpu cpu;
 	struct asmInstruction PLA;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.mem[STACK_BEGIN + cpu.reg.sp + 1] = 0x80;
 	PLA.opcode = 0x68;
 	testInstruction(&cpu, PLA);
@@ -548,9 +560,10 @@ void testPLP(void)
 {
 	struct cpu cpu;
 	struct asmInstruction PLP;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.p = 0x13;
 	cpu.mem[STACK_BEGIN + cpu.reg.sp + 1] = 0x3A;
 	PLP.opcode = 0x28;
@@ -564,9 +577,10 @@ void testAND(void)
 {
 	struct cpu cpu;
 	struct asmInstruction AND;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.a = 0xB4;
 
 	/* test immediate */
@@ -666,9 +680,10 @@ void testEOR(void)
 {
 	struct cpu cpu;
 	struct asmInstruction EOR;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.a = 0xB4;
 
 	/* test immediate */
@@ -761,9 +776,10 @@ void testORA(void)
 {
 	struct cpu cpu;
 	struct asmInstruction ORA;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.a = 0xB4;
 
 	/* test immediate */
@@ -863,6 +879,7 @@ void testBIT(void)
 {
 	struct cpu cpu;
 	struct asmInstruction BIT;
+	struct bus bus = {.cpu = &cpu};
 
 	cpu.reg.a = 0x34;
 
@@ -883,7 +900,7 @@ void testBIT(void)
 	testInstruction(&cpu, BIT);
 	TEST_ASSERT_BITS_HIGH(N | V | Z, cpu.reg.p);
 
-	uint8_t c = getFlag(&cpu, N);
+	uint8_t c = getFlag(&bus, N);
 	TEST_ASSERT_EQUAL(1, c);
 }
 
@@ -896,13 +913,14 @@ void testADC(void)
 {
 	struct cpu cpu;
 	struct asmInstruction ADC;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
-	setFlag(&cpu, C, 0);
+	resetCPU(&bus, &cycles);
+	setFlag(&bus, C, 0);
 
 	/* test immediate */
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	ADC.opcode = 0x69;
 	ADC.operand1 = 0x10;
 	cpu.reg.a = 0x50;
@@ -911,7 +929,7 @@ void testADC(void)
 	TEST_ASSERT_BITS_LOW(C | V, cpu.reg.p);
 
 	/* test zeropage */
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	ADC.opcode = 0x65;
 	ADC.operand1 = 0x80;
 	cpu.reg.a = 0x50;
@@ -922,7 +940,7 @@ void testADC(void)
 	TEST_ASSERT_BITS_HIGH(V, cpu.reg.p);
 
 	/* test zeropage,x */
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	ADC.opcode = 0x75;
 	ADC.operand1 = 0x80;
 	cpu.reg.x = 0xFF;
@@ -933,7 +951,7 @@ void testADC(void)
 	TEST_ASSERT_BITS_LOW(C | V, cpu.reg.p);
 
 	/* test absolute */
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	ADC.opcode = 0x6d;
 	ADC.operand1 = 0x34;
 	ADC.operand2 = 0x12;
@@ -945,7 +963,7 @@ void testADC(void)
 	TEST_ASSERT_BITS_LOW(V, cpu.reg.p);
 
 	/* test absolute,x */
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	ADC.opcode = 0x7d;
 	ADC.operand1 = 0x34;
 	ADC.operand2 = 0x12;
@@ -957,7 +975,7 @@ void testADC(void)
 	TEST_ASSERT_BITS_LOW(C | V, cpu.reg.p);
 
 	/* test absolute,y */
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	ADC.opcode = 0x79;
 	ADC.operand1 = 0x34;
 	ADC.operand2 = 0x12;
@@ -970,7 +988,7 @@ void testADC(void)
 	TEST_ASSERT_BITS_LOW(V, cpu.reg.p);
 
 	/* test (indirect,x) */
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	ADC.opcode = 0x61;
 	ADC.operand1 = 0x80;
 	cpu.reg.x = 0xFF;
@@ -983,7 +1001,7 @@ void testADC(void)
 	TEST_ASSERT_BITS_HIGH(C | V, cpu.reg.p);
 
 	/* test (indirect),y */
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	ADC.opcode = 0x71;
 	ADC.operand1 = 0x80;
 	cpu.mem[0x0080] = 0x34;
@@ -1001,13 +1019,14 @@ void testSBC(void)
 {
 	struct cpu cpu;
 	struct asmInstruction SBC;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
-	setFlag(&cpu, C, 0);
+	resetCPU(&bus, &cycles);
+	setFlag(&bus, C, 0);
 
 	/* test immediate */
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	SBC.opcode = 0xe9;
 	SBC.operand1 = 0xf0;
 	cpu.reg.a = 0x50;
@@ -1016,7 +1035,7 @@ void testSBC(void)
 	TEST_ASSERT_BITS_LOW(V | C, cpu.reg.p);
 
 	/* test zeropage */
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	SBC.opcode = 0xe5;
 	SBC.operand1 = 0x80;
 	cpu.reg.a = 0x50;
@@ -1027,7 +1046,7 @@ void testSBC(void)
 	TEST_ASSERT_BITS_LOW(C, cpu.reg.p);
 
 	/* test zeropage,x */
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	SBC.opcode = 0xf5;
 	SBC.operand1 = 0x80;
 	cpu.reg.x = 0xFF;
@@ -1038,7 +1057,7 @@ void testSBC(void)
 	TEST_ASSERT_BITS_LOW(V | C, cpu.reg.p);
 
 	/* test absolute */
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	SBC.opcode = 0xed;
 	SBC.operand1 = 0x34;
 	SBC.operand2 = 0x12;
@@ -1050,7 +1069,7 @@ void testSBC(void)
 	TEST_ASSERT_BITS_HIGH(C, cpu.reg.p);
 
 	/* test absolute,x */
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	SBC.opcode = 0xfd;
 	SBC.operand1 = 0x34;
 	SBC.operand2 = 0x12;
@@ -1062,7 +1081,7 @@ void testSBC(void)
 	TEST_ASSERT_BITS_LOW(V | C, cpu.reg.p);
 
 	/* test absolute,y */
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	SBC.opcode = 0xf9;
 	SBC.operand1 = 0x34;
 	SBC.operand2 = 0x12;
@@ -1075,7 +1094,7 @@ void testSBC(void)
 	TEST_ASSERT_BITS_HIGH(C, cpu.reg.p);
 
 	/* test (indirect,x) */
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	SBC.opcode = 0xe1;
 	SBC.operand1 = 0x80;
 	cpu.reg.x = 0xFF;
@@ -1088,7 +1107,7 @@ void testSBC(void)
 	TEST_ASSERT_BITS_HIGH(C | V, cpu.reg.p);
 
 	/* test (indirect),y */
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	SBC.opcode = 0xf1;
 	SBC.operand1 = 0x80;
 	cpu.mem[0x0080] = 0x34;
@@ -1106,9 +1125,10 @@ void testCMP(void)
 {
 	struct cpu cpu;
 	struct asmInstruction CMP;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.a = 0x30;
 
 	/* test immediate */
@@ -1191,9 +1211,10 @@ void testCPX(void)
 {
 	struct cpu cpu;
 	struct asmInstruction CPX;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.x = 0x40;
 
 	/* test immediate */
@@ -1225,9 +1246,10 @@ void testCPY(void)
 {
 	struct cpu cpu;
 	struct asmInstruction CPY;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.y = 0x40;
 
 	/* test immediate */
@@ -1305,9 +1327,10 @@ void testINX(void)
 {
 	struct cpu cpu;
 	struct asmInstruction INX;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	INX.opcode = 0xe8;
 	cpu.reg.x = 0x9f;
 	testInstruction(&cpu, INX);
@@ -1320,9 +1343,10 @@ void testINY(void)
 {
 	struct cpu cpu;
 	struct asmInstruction INY;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	INY.opcode = 0xc8;
 	cpu.reg.y = 0x9f;
 	testInstruction(&cpu, INY);
@@ -1380,9 +1404,10 @@ void testDEX(void)
 {
 	struct cpu cpu;
 	struct asmInstruction DEX;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	DEX.opcode = 0xca;
 	cpu.reg.x = 0x01;
 	testInstruction(&cpu, DEX);
@@ -1395,14 +1420,15 @@ void testASL(void)
 {
 	struct cpu cpu;
 	struct asmInstruction ASL;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 
 	/* test accumulator */
 	ASL.opcode = 0x0a;
 	cpu.reg.a = 0xc2;
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	testInstruction(&cpu, ASL);
 	TEST_ASSERT_EQUAL(0x84, cpu.reg.a);
 	TEST_ASSERT_BITS_HIGH(C | N, cpu.reg.p);
@@ -1411,7 +1437,7 @@ void testASL(void)
 	ASL.opcode = 0x06;
 	ASL.operand1 = 0x80;
 	cpu.mem[0x0080] = 0x80;
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	testInstruction(&cpu, ASL);
 	TEST_ASSERT_EQUAL(0x00, cpu.mem[0x0080]);
 	TEST_ASSERT_BITS_HIGH(C | Z, cpu.reg.p);
@@ -1422,7 +1448,7 @@ void testASL(void)
 	ASL.operand1 = 0x80;
 	cpu.reg.x = 0xff;
 	cpu.mem[0x007f] = 0xc2;
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	testInstruction(&cpu, ASL);
 	TEST_ASSERT_EQUAL(0x84, cpu.mem[0x007f]);
 	TEST_ASSERT_BITS_HIGH(C | N, cpu.reg.p);
@@ -1451,14 +1477,15 @@ void testLSR(void)
 {
 	struct cpu cpu;
 	struct asmInstruction LSR;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 
 	/* test accumulator */
 	LSR.opcode = 0x4a;
 	cpu.reg.a = 0x01;
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	testInstruction(&cpu, LSR);
 	TEST_ASSERT_EQUAL(0x00, cpu.reg.a);
 	TEST_ASSERT_BITS_HIGH(C | Z, cpu.reg.p);
@@ -1504,13 +1531,14 @@ void testROL(void)
 {
 	struct cpu cpu;
 	struct asmInstruction ROL;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 
 	/* test accumulator */
 	ROL.opcode = 0x2a;
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	cpu.reg.a = 0x80;
 	testInstruction(&cpu, ROL);
 	TEST_ASSERT_EQUAL(0x00, cpu.reg.a);
@@ -1520,7 +1548,7 @@ void testROL(void)
 	/* test zeropage */
 	ROL.opcode = 0x26;
 	ROL.operand1 = 0x34;
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	cpu.mem[0x0034] = 0x80;
 	testInstruction(&cpu, ROL);
 	TEST_ASSERT_EQUAL(0x01, cpu.mem[0x0034]);
@@ -1531,7 +1559,7 @@ void testROL(void)
 	ROL.opcode = 0x36;
 	ROL.operand1 = 0x80;
 	cpu.reg.x = 0xff;
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	cpu.mem[0x007f] = 0xc0;
 	testInstruction(&cpu, ROL);
 	TEST_ASSERT_EQUAL(0x81, cpu.mem[0x007f]);
@@ -1542,7 +1570,7 @@ void testROL(void)
 	ROL.operand1 = 0x34;
 	ROL.operand2 = 0x12;
 	cpu.mem[0x1234] = 0x9c;
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	testInstruction(&cpu, ROL);
 	TEST_ASSERT_EQUAL(0x38, cpu.mem[0x1234]);
 	TEST_ASSERT_BITS_HIGH(C, cpu.reg.p);
@@ -1554,7 +1582,7 @@ void testROL(void)
 	ROL.operand2 = 0x12;
 	cpu.reg.x = 0xff;
 	cpu.mem[0x1333] = 0x9c;
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	testInstruction(&cpu, ROL);
 	TEST_ASSERT_EQUAL(0x38, cpu.mem[0x1234]);
 	TEST_ASSERT_BITS_HIGH(C, cpu.reg.p);
@@ -1565,13 +1593,14 @@ void testROR(void)
 {
 	struct cpu cpu;
 	struct asmInstruction ROR;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 
 	/* test accumulator */
 	ROR.opcode = 0x6a;
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	cpu.reg.a = 0x01;
 	testInstruction(&cpu, ROR);
 	TEST_ASSERT_EQUAL(0x00, cpu.reg.a);
@@ -1581,7 +1610,7 @@ void testROR(void)
 	/* test zeropage */
 	ROR.opcode = 0x66;
 	ROR.operand1 = 0x34;
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	cpu.mem[0x0034] = 0x01;
 	testInstruction(&cpu, ROR);
 	TEST_ASSERT_EQUAL(0x80, cpu.mem[0x0034]);
@@ -1592,7 +1621,7 @@ void testROR(void)
 	ROR.opcode = 0x76;
 	ROR.operand1 = 0x80;
 	cpu.reg.x = 0xff;
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	cpu.mem[0x007f] = 0xc0;
 	testInstruction(&cpu, ROR);
 	TEST_ASSERT_EQUAL(0xe0, cpu.mem[0x007f]);
@@ -1604,7 +1633,7 @@ void testROR(void)
 	ROR.operand1 = 0x34;
 	ROR.operand2 = 0x12;
 	cpu.mem[0x1234] = 0x9c;
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	testInstruction(&cpu, ROR);
 	TEST_ASSERT_EQUAL(0x4e, cpu.mem[0x1234]);
 	TEST_ASSERT_BITS_LOW(C | N | Z, cpu.reg.p);
@@ -1615,7 +1644,7 @@ void testROR(void)
 	ROR.operand2 = 0x12;
 	cpu.reg.x = 0xff;
 	cpu.mem[0x1333] = 0x9c;
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	testInstruction(&cpu, ROR);
 	TEST_ASSERT_EQUAL(0x4e, cpu.mem[0x1234]);
 	TEST_ASSERT_BITS_LOW(C | N | Z, cpu.reg.p);
@@ -1625,18 +1654,19 @@ void testBCC(void)
 {
 	struct cpu cpu;
 	struct asmInstruction BCC;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.x = 0x04;
 	cpu.reg.pc = 0x8014;
-	setFlag(&cpu, C, 0);
+	setFlag(&bus, C, 0);
 	cpu.mem[0x8010] = 0xe8; 
 
 	BCC.opcode = 0x90;
 	BCC.operand1 = 0xFA;
 	testInstruction(&cpu, BCC);
-	fetchAndExecuteInstruction(&cpu, &cycles);
+	fetchAndExecuteInstruction(&bus, &cycles);
 	TEST_ASSERT_EQUAL(0x05, cpu.reg.x);
 	TEST_ASSERT_BITS_LOW(N | Z, cpu.reg.p);
 }
@@ -1645,18 +1675,19 @@ void testBCS(void)
 {
 	struct cpu cpu;
 	struct asmInstruction BCS;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.x = 0x04;
 	cpu.reg.pc = 0x8014;
-	setFlag(&cpu, C, 1);
+	setFlag(&bus, C, 1);
 	cpu.mem[0x801c] = 0xe8; 
 
 	BCS.opcode = 0xb0;
 	BCS.operand1 = 0x06;
 	testInstruction(&cpu, BCS);
-	fetchAndExecuteInstruction(&cpu, &cycles);
+	fetchAndExecuteInstruction(&bus, &cycles);
 	TEST_ASSERT_EQUAL(0x05, cpu.reg.x);
 	TEST_ASSERT_BITS_LOW(N | Z, cpu.reg.p);
 }
@@ -1665,19 +1696,20 @@ void testBEQ(void)
 {
 	struct cpu cpu;
 	struct asmInstruction BEQ;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.x = 0x04;
 	cpu.reg.a = 0x20;
 	cpu.reg.pc = 0x8014;
-	setFlag(&cpu, Z, 1);
+	setFlag(&bus, Z, 1);
 	cpu.mem[0x8010] = 0xe8; 
 
 	BEQ.opcode = 0xf0;
 	BEQ.operand1 = 0xfa;
 	testInstruction(&cpu, BEQ);
-	fetchAndExecuteInstruction(&cpu, &cycles);
+	fetchAndExecuteInstruction(&bus, &cycles);
 	TEST_ASSERT_EQUAL(0x05, cpu.reg.x);
 	TEST_ASSERT_BITS_LOW(N | Z, cpu.reg.p);
 }
@@ -1686,19 +1718,20 @@ void testBMI(void)
 {
 	struct cpu cpu;
 	struct asmInstruction BMI;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.x = 0x04;
 	cpu.reg.a = 0x20;
 	cpu.reg.pc = 0x8014;
-	setFlag(&cpu, N, 1);
+	setFlag(&bus, N, 1);
 	cpu.mem[0x8024] = 0xe8; 
 
 	BMI.opcode = 0x30;
 	BMI.operand1 = 0x0e;
 	testInstruction(&cpu, BMI);
-	fetchAndExecuteInstruction(&cpu, &cycles);
+	fetchAndExecuteInstruction(&bus, &cycles);
 	TEST_ASSERT_EQUAL(0x05, cpu.reg.x);
 	TEST_ASSERT_BITS_LOW(N | Z, cpu.reg.p);
 }
@@ -1707,19 +1740,20 @@ void testBNE(void)
 {
 	struct cpu cpu;
 	struct asmInstruction BNE;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.x = 0x04;
 	cpu.reg.a = 0x20;
 	cpu.reg.pc = 0x8014;
-	setFlag(&cpu, Z, 0);
+	setFlag(&bus, Z, 0);
 	cpu.mem[0x8024] = 0xe8; 
 
 	BNE.opcode = 0xd0;
 	BNE.operand1 = 0x0e;
 	testInstruction(&cpu, BNE);
-	fetchAndExecuteInstruction(&cpu, &cycles);
+	fetchAndExecuteInstruction(&bus, &cycles);
 	TEST_ASSERT_EQUAL(0x05, cpu.reg.x);
 	TEST_ASSERT_BITS_LOW(N | Z, cpu.reg.p);
 }
@@ -1728,19 +1762,20 @@ void testBPL(void)
 {
 	struct cpu cpu;
 	struct asmInstruction BPL;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.x = 0x04;
 	cpu.reg.a = 0x20;
 	cpu.reg.pc = 0x8014;
-	setFlag(&cpu, Z, 0);
+	setFlag(&bus, Z, 0);
 	cpu.mem[0x8024] = 0xe8; 
 
 	BPL.opcode = 0x10;
 	BPL.operand1 = 0x0e;
 	testInstruction(&cpu, BPL);
-	fetchAndExecuteInstruction(&cpu, &cycles);
+	fetchAndExecuteInstruction(&bus, &cycles);
 	TEST_ASSERT_EQUAL(0x05, cpu.reg.x);
 	TEST_ASSERT_BITS_LOW(N | Z, cpu.reg.p);
 }
@@ -1749,19 +1784,20 @@ void testBVC(void)
 {
 	struct cpu cpu;
 	struct asmInstruction BVC;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.x = 0x04;
 	cpu.reg.a = 0x20;
 	cpu.reg.pc = 0x8014;
-	setFlag(&cpu, V, 0);
+	setFlag(&bus, V, 0);
 	cpu.mem[0x8024] = 0xe8; 
 
 	BVC.opcode = 0x50;
 	BVC.operand1 = 0x0e;
 	testInstruction(&cpu, BVC);
-	fetchAndExecuteInstruction(&cpu, &cycles);
+	fetchAndExecuteInstruction(&bus, &cycles);
 	TEST_ASSERT_EQUAL(0x05, cpu.reg.x);
 	TEST_ASSERT_BITS_LOW(N | Z, cpu.reg.p);
 }
@@ -1770,19 +1806,20 @@ void testBVS(void)
 {
 	struct cpu cpu;
 	struct asmInstruction BVS;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.x = 0x04;
 	cpu.reg.a = 0x20;
 	cpu.reg.pc = 0x8014;
-	setFlag(&cpu, V, 1);
+	setFlag(&bus, V, 1);
 	cpu.mem[0x8024] = 0xe8; 
 
 	BVS.opcode = 0x70;
 	BVS.operand1 = 0x0e;
 	testInstruction(&cpu, BVS);
-	fetchAndExecuteInstruction(&cpu, &cycles);
+	fetchAndExecuteInstruction(&bus, &cycles);
 	TEST_ASSERT_EQUAL(0x05, cpu.reg.x);
 	TEST_ASSERT_BITS_LOW(N | Z, cpu.reg.p);
 }
@@ -1791,9 +1828,10 @@ void testDEY(void)
 {
 	struct cpu cpu;
 	struct asmInstruction DEY;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	DEY.opcode = 0x88;
 	cpu.reg.y = 0x4e;
 	testInstruction(&cpu, DEY);
@@ -1805,10 +1843,11 @@ void testCLC(void)
 {
 	struct cpu cpu;
 	struct asmInstruction CLC;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
-	setFlag(&cpu, C, 1);
+	resetCPU(&bus, &cycles);
+	setFlag(&bus, C, 1);
 	CLC.opcode = 0x18;
 	testInstruction(&cpu, CLC);
 	TEST_ASSERT_BITS_LOW(C, cpu.reg.p);
@@ -1818,10 +1857,11 @@ void testCLI(void)
 {
 	struct cpu cpu;
 	struct asmInstruction CLI;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
-	setFlag(&cpu, I, 1);
+	resetCPU(&bus, &cycles);
+	setFlag(&bus, I, 1);
 	CLI.opcode = 0x58;
 	testInstruction(&cpu, CLI);
 	TEST_ASSERT_BITS_LOW(I, cpu.reg.p);
@@ -1830,10 +1870,11 @@ void testCLI(void)
 void testCLD(void)
 {
 	struct cpu cpu;
-	uint8_t cycles = 0;
+	int cycles = 0;
 	struct asmInstruction CLD;
-	resetCPU(&cpu, &cycles);
-	setFlag(&cpu, D, 1);
+	struct bus bus = {.cpu = &cpu};
+	resetCPU(&bus, &cycles);
+	setFlag(&bus, D, 1);
 	CLD.opcode = 0xd8;
 	testInstruction(&cpu, CLD);
 	TEST_ASSERT_BITS_LOW(D, cpu.reg.p);
@@ -1842,10 +1883,11 @@ void testCLD(void)
 void testCLV(void)
 {
 	struct cpu cpu;
-	uint8_t cycles = 0;
+	int cycles = 0;
 	struct asmInstruction CLV;
-	resetCPU(&cpu, &cycles);
-	setFlag(&cpu, V, 1);
+	struct bus bus = {.cpu = &cpu};
+	resetCPU(&bus, &cycles);
+	setFlag(&bus, V, 1);
 	CLV.opcode = 0xb8;
 	testInstruction(&cpu, CLV);
 	TEST_ASSERT_BITS_LOW(V, cpu.reg.p);
@@ -1854,10 +1896,11 @@ void testCLV(void)
 void testSEC(void)
 {
 	struct cpu cpu;
-	uint8_t cycles = 0;
+	int cycles = 0;
 	struct asmInstruction SEC;
-	resetCPU(&cpu, &cycles);
-	setFlag(&cpu, C, 0);
+	struct bus bus = {.cpu = &cpu};
+	resetCPU(&bus, &cycles);
+	setFlag(&bus, C, 0);
 	SEC.opcode = 0x38;
 	testInstruction(&cpu, SEC);
 	TEST_ASSERT_BITS_HIGH(C, cpu.reg.p);
@@ -1866,10 +1909,11 @@ void testSEC(void)
 void testSED(void)
 {
 	struct cpu cpu;
-	uint8_t cycles = 0;
+	int cycles = 0;
 	struct asmInstruction SED;
-	resetCPU(&cpu, &cycles);
-	setFlag(&cpu, D, 1);
+	struct bus bus = {.cpu = &cpu};
+	resetCPU(&bus, &cycles);
+	setFlag(&bus, D, 1);
 	SED.opcode = 0xf8;
 	testInstruction(&cpu, SED);
 	TEST_ASSERT_BITS_HIGH(D, cpu.reg.p);
@@ -1878,10 +1922,11 @@ void testSED(void)
 void testSEI(void)
 {
 	struct cpu cpu;
-	uint8_t cycles = 0;
+	int cycles = 0;
 	struct asmInstruction SEI;
-	resetCPU(&cpu, &cycles);
-	setFlag(&cpu, C, 1);
+	struct bus bus = {.cpu = &cpu};
+	resetCPU(&bus, &cycles);
+	setFlag(&bus, C, 1);
 	SEI.opcode = 0x78;
 	testInstruction(&cpu, SEI);
 	TEST_ASSERT_BITS_HIGH(I, cpu.reg.p);
@@ -1891,9 +1936,10 @@ void testJSR(void)
 {
 	struct cpu cpu;
 	struct asmInstruction JSR;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.pc = 0x8001;
 	JSR.opcode = 0x20;
 	JSR.operand1 = 0x45;
@@ -1908,9 +1954,10 @@ void testRTI(void)
 {
 	struct cpu cpu;
 	struct asmInstruction RTI;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.sp = 0xf0;
 	cpu.mem[STACK_BEGIN + cpu.reg.sp + 1] = 0xb3;
 	cpu.mem[STACK_BEGIN + cpu.reg.sp + 2] = 0x03;
@@ -1925,11 +1972,12 @@ void testRTS(void)
 {
 	struct cpu cpu;
 	struct asmInstruction RTS;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	cpu.reg.pc = 0x9000;
-	pushPCtoStack(&cpu);
+	pushPCtoStack(&bus);
 	RTS.opcode = 0x60;
 	testInstruction(&cpu, RTS);
 	TEST_ASSERT_EQUAL(0x9001, cpu.reg.pc);
@@ -1938,9 +1986,10 @@ void testJMP(void)
 {
 	struct cpu cpu;
 	struct asmInstruction JMP;
-	uint8_t cycles = 0;
+	int cycles = 0;
+	struct bus bus = {.cpu = &cpu};
 
-	resetCPU(&cpu, &cycles);
+	resetCPU(&bus, &cycles);
 	
 	/* test absolute */
 	JMP.opcode = 0x4c;
