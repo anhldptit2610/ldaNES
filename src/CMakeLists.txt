@@ -7,14 +7,16 @@ add_compile_options(-W -Wall -ggdb)
 add_executable(ldaNES
 	bus.c
 	main.c
-	ldaNES_6502.c
+	cpu.c
+	ppu.c
 	cartridge.c
 )
 
 add_executable(test
 	testCPUInstructions.c
 	bus.c
-	ldaNES_6502.c
+	cpu.c
+	ppu.c
 )
 
 target_link_libraries(test PRIVATE unity)
