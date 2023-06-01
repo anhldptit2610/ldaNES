@@ -1,3 +1,4 @@
+
 enum MIRRORING {
 	HORIZONTAL,
 	VERTICAL,
@@ -21,4 +22,4 @@ struct cartridge {
 	bool isCartridgeUsesPRGRAM;
 };
 
-void parseCartridge(struct cartridge *cart, struct cpu *cpu, char *rom_path);
+void parseCartridge(struct cartridge *cart, struct bus *bus, char *rom_path);

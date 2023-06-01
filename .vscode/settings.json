@@ -4,7 +4,11 @@
 		"ldanes_6502.h": "c",
 		"bus.h": "c",
 		"cartridge.h": "c",
-		"stdint.h": "c"
+		"stdint.h": "c",
+		"ldanes_2c02.h": "c",
+		"ppu.h": "c",
+		"cpu.h": "c",
+		"common.h": "c"
 	},
 	"cmake.sourceDirectory": "/home/lda/Learning/ldaNES/src"
 }
