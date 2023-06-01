@@ -1,11 +1,12 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include "../inc/common.h"
 #include "../inc/bus.h"
-#include "../inc/ldaNES_6502.h"
+#include "../inc/ppu.h"
 #include "../inc/cartridge.h"
 
-void parseCartridge(struct cartridge *cart, struct cpu *cpu, char *rom_path)
+void parseCartridge(struct cartridge *cart, struct bus *bus, char *rom_path)
 {
 	FILE *filp = NULL;
 
@@ -31,7 +32,8 @@ void parseCartridge(struct cartridge *cart, struct cpu *cpu, char *rom_path)
 	cart->skipTrainer = (cart->header[6] & (1U << 2)) ? false : true;
 	cart->cartridgeVersion = (((cart->header[6] >> 2) & 0x11) == 2) ? NESv2 : iNES;
 
-	fread(&cpu->mem[0xc000], 1, 16384 * cart->prgromSize, filp);
+	fread(&bus->cpu->mem[0xc000], 1, 16384 * cart->prgromSize, filp);
+
 
 	fclose(filp);
 }
